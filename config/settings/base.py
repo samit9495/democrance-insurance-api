@@ -44,6 +44,7 @@ LOCAL_APPS = [
     "apps.accounts",
     "apps.customers",
     "apps.products",
+    "apps.policies",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -53,6 +54,9 @@ AUTH_USER_MODEL = "accounts.User"
 # Eligibility bounds for rating (REQUIREMENTS 6.2); configurable per market.
 CUSTOMER_MIN_AGE = config("CUSTOMER_MIN_AGE", default=18, cast=int)
 CUSTOMER_MAX_AGE = config("CUSTOMER_MAX_AGE", default=100, cast=int)
+
+# How long a quote stays acceptable after it is priced (ENH-04).
+QUOTE_VALIDITY_DAYS = config("QUOTE_VALIDITY_DAYS", default=30, cast=int)
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
