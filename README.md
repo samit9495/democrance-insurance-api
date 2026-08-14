@@ -8,6 +8,7 @@ audit trail, JWT auth, OpenAPI docs and a no-tooling demo client.
 - **API contract:** [docs/API.md](docs/API.md) (with a Mermaid sequence diagram)
 - **Auth:** [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)
 - **Decisions:** [docs/adr/](docs/adr/) (ADRs 0001–0008)
+- **Requirement → test map:** [docs/TRACEABILITY.md](docs/TRACEABILITY.md)
 
 ## Quickstart (local, zero services)
 
@@ -40,6 +41,39 @@ Demo logins after `make seed` (password `demo-pass-123`): `staff@demo.local`,
 `policies` list → policy detail → policy history. For Ben Stokes
 (`dob 25-06-1991`, age 35) on `personal-accident` with cover `200000`, the
 premium is **`200.00`**. See [docs/API.md](docs/API.md) for payloads.
+
+## Acceptance (copy-paste)
+
+With the server running and `DEMO_OPEN_API=true` (the default), the brief's
+headline command works with no auth:
+
+```bash
+# 1. create a customer -> 201 with an id
+curl -sX POST http://127.0.0.1:8000/api/v1/create_customer/ \
+  -H 'Content-Type: application/json' \
+  -d '{"first_name":"Ben","last_name":"Stokes","dob":"25-06-1991"}'
+
+# 2. quote (premium is computed server-side at 200.00)
+curl -sX POST http://127.0.0.1:8000/api/v1/quote/ \
+  -H 'Content-Type: application/json' \
+  -d '{"customer_id":1,"type":"personal-accident"}'
+
+# 3. accept, then 4. pay/bind
+curl -sX POST http://127.0.0.1:8000/api/v1/quote/ -H 'Content-Type: application/json' -d '{"quote_id":1,"status":"accepted"}'
+curl -sX POST http://127.0.0.1:8000/api/v1/quote/ -H 'Content-Type: application/json' -d '{"quote_id":1,"status":"active"}'
+
+# 5-7. list, detail, history
+curl -s 'http://127.0.0.1:8000/api/v1/policies/?customer_id=1'
+curl -s  http://127.0.0.1:8000/api/v1/policies/1/
+curl -s  http://127.0.0.1:8000/api/v1/policies/1/history/
+```
+
+The same flow is asserted end to end by
+`tests/e2e/test_full_diagram_flow.py::test_seven_step_diagram_flow`.
+
+> Ids above assume a fresh database (just `make migrate`), so Ben is customer 1.
+> If you also ran `make seed`, the demo customer takes id 1 and Ben becomes id 2 —
+> adjust `customer_id`/`quote_id` accordingly.
 
 ## Testing & quality
 
@@ -86,5 +120,32 @@ docs/         requirements, API, auth, ADRs, sequence diagram
 
 ## Docker
 
-`make up` builds and runs the API against Postgres via Docker Compose; `make
-demo` replays the full flow end to end (delivered in Phase 11).
+```bash
+make up      # build + start API and Postgres; migrates and seeds on first boot
+make demo    # migrate, seed, and replay the seven-step flow end to end
+make down    # stop the stack
+```
+
+The image is multi-stage and runs as a non-root user (gunicorn + WhiteNoise);
+the container has a `/healthz/` healthcheck and the API waits for a healthy
+database before serving. Verified from a cold `docker compose up --build`.
+
+## Deviations from the brief, and scope
+
+The brief invites going beyond the literal ask; where this solution does, it is
+recorded as an ADR and an `ENH-` id in [REQUIREMENTS.md §11](docs/REQUIREMENTS.md).
+The notable choices:
+
+- **One overloaded `POST /quote/`** (create/accept/pay by payload) to mirror the
+  diagram exactly, **plus** REST aliases for clients that prefer them (ADR-0002).
+- **Slashless routing.** The diagram writes some paths without a trailing slash;
+  every RPC route answers both spellings because `APPEND_SLASH` cannot redirect a
+  `POST` without dropping its body (ADR-0001).
+- **DB-driven, date-versioned rating** instead of hardcoded rates (ADR-0006), and
+  **server-computed premium** rejected on input (ADR-0004).
+- **`DEMO_OPEN_API`** opens the seven endpoints for a bare-`curl` review; it is
+  off in production and the permission matrix proves the locked-down mode (ADR-0008).
+
+**Deliberately out of scope** (argued in REQUIREMENTS.md §11): dedupe/GDPR
+erasure, renewals/endorsements/claims, Celery async, SSO/MFA, multi-currency FX,
+and a real payment gateway (the simulator is swappable behind one seam).
