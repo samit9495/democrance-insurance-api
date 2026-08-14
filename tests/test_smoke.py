@@ -14,6 +14,24 @@ def test_healthz_returns_ok(client):
     assert body["database"] == "ok"
 
 
+@pytest.mark.django_db
+def test_healthz_reports_error_when_database_is_unreachable(client, monkeypatch):
+    """The probe fails loudly with 503 when the DB round-trip errors (ENH-13a)."""
+    from apps.common import views
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("database unreachable")
+
+    monkeypatch.setattr(views.connection, "cursor", boom)
+
+    response = client.get("/healthz/")
+
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "error"
+    assert body["database"] == "error"
+
+
 def test_settings_fall_back_to_sqlite_without_database_url(settings):
     """With no DATABASE_URL the default database is SQLite — zero-setup (D5)."""
     assert settings.DATABASES["default"]["ENGINE"].endswith("sqlite3")

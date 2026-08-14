@@ -8,6 +8,10 @@ from .base import *  # noqa: F403
 
 DEBUG = False
 
+# WhiteNoise scans STATIC_ROOT at startup and warns when it is absent; it adds
+# nothing under test, so drop it to keep the suite output clean.
+MIDDLEWARE = [m for m in MIDDLEWARE if "whitenoise" not in m.lower()]  # noqa: F405
+
 # Honour DATABASE_URL when CI sets it (PostgreSQL leg); otherwise in-memory SQLite.
 if not DATABASE_URL:  # noqa: F405
     DATABASES = {
