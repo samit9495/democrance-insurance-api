@@ -42,11 +42,16 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "apps.common",
     "apps.accounts",
+    "apps.customers",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 AUTH_USER_MODEL = "accounts.User"
+
+# Eligibility bounds for rating (REQUIREMENTS 6.2); configurable per market.
+CUSTOMER_MIN_AGE = config("CUSTOMER_MIN_AGE", default=18, cast=int)
+CUSTOMER_MAX_AGE = config("CUSTOMER_MAX_AGE", default=100, cast=int)
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
