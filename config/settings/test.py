@@ -12,6 +12,13 @@ DEBUG = False
 # nothing under test, so drop it to keep the suite output clean.
 MIDDLEWARE = [m for m in MIDDLEWARE if "whitenoise" not in m.lower()]  # noqa: F405
 
+# The manifest static storage needs a collectstatic run; use the plain storage
+# so admin templates ({% static %}) render under test without one.
+STORAGES = {  # noqa: F405
+    **STORAGES,  # noqa: F405
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
 # Honour DATABASE_URL when CI sets it (PostgreSQL leg); otherwise in-memory SQLite.
 if not DATABASE_URL:  # noqa: F405
     DATABASES = {
