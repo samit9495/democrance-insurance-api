@@ -27,8 +27,9 @@ BANDS = [
 
 @pytest.fixture
 def pa_product(db):
+    # A distinct code so this fixture is independent of the seeded catalogue.
     product = ProductTypeFactory(
-        code="personal-accident",
+        code="pa-under-test",
         min_age=18,
         max_age=70,
         min_cover=Decimal("1000.00"),
