@@ -13,6 +13,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import scope_policies
 from apps.payments.models import Payment
 from apps.payments.services import simulate_payment
 from apps.policies import services
@@ -31,13 +32,14 @@ def _policy_queryset():
     return Policy.objects.select_related("product", "customer").prefetch_related("payments")
 
 
-def _actor(request):
-    return request.user if request.user.is_authenticated else None
+def _actor(user):
+    return user if user and user.is_authenticated else None
 
 
-def _get_policy(quote_id: int) -> Policy:
+def _get_policy(quote_id: int, user) -> Policy:
+    # Scope first, so a customer asking for someone else's quote gets 404 (not 403).
     try:
-        return _policy_queryset().get(pk=quote_id)
+        return scope_policies(_policy_queryset(), user).get(pk=quote_id)
     except Policy.DoesNotExist as exc:
         raise NotFound(f"No quote with id {quote_id}.") from exc
 
@@ -46,24 +48,30 @@ def _render(policy: Policy, *, http_status: int = status.HTTP_200_OK) -> Respons
     return Response(PolicyReadSerializer(policy).data, status=http_status)
 
 
-def _create_quote(data, actor=None) -> Response:
+def _create_quote(data, user) -> Response:
     serializer = QuoteCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
     v = serializer.validated_data
+    customer = v["customer"]
+    # A customer principal may only act for itself — anyone else's id is "not found".
+    if user and user.is_authenticated and user.is_customer and customer.user_id != user.id:
+        raise NotFound(f"No customer with id {customer.id}.")
     policy = services.create_quote(
-        customer=v["customer"], product=v["product"], cover=v.get("cover"), actor=actor
+        customer=customer, product=v["product"], cover=v.get("cover"), actor=_actor(user)
     )
     return _render(policy, http_status=status.HTTP_201_CREATED)
 
 
-def _accept_quote(quote_id: int, actor=None) -> Response:
-    policy = services.accept_quote(policy=_get_policy(quote_id), actor=actor)
+def _accept_quote(quote_id: int, user) -> Response:
+    policy = services.accept_quote(policy=_get_policy(quote_id, user), actor=_actor(user))
     return _render(policy)
 
 
-def _pay_quote(quote_id: int, payment_method: str | None, actor=None) -> Response:
-    policy = _get_policy(quote_id)
-    simulate_payment(policy=policy, method=payment_method or Payment.Method.CARD, actor=actor)
+def _pay_quote(quote_id: int, payment_method: str | None, user) -> Response:
+    policy = _get_policy(quote_id, user)
+    simulate_payment(
+        policy=policy, method=payment_method or Payment.Method.CARD, actor=_actor(user)
+    )
     policy.refresh_from_db()
     return _render(policy)
 
@@ -85,15 +93,14 @@ class QuoteDispatchView(APIView):
                 "or quote_id+status to accept or pay one — not both."
             )
         if has_create:
-            return _create_quote(data, actor=_actor(request))
+            return _create_quote(data, request.user)
         if has_transition:
             serializer = QuoteTransitionSerializer(data=data)
             serializer.is_valid(raise_exception=True)
             v = serializer.validated_data
-            actor = _actor(request)
             if v["status"] == "accepted":
-                return _accept_quote(v["quote_id"], actor=actor)
-            return _pay_quote(v["quote_id"], v.get("payment_method"), actor=actor)
+                return _accept_quote(v["quote_id"], request.user)
+            return _pay_quote(v["quote_id"], v.get("payment_method"), request.user)
 
         raise ValidationError(
             "Unrecognised payload: send customer_id+type to create a quote, "
@@ -105,14 +112,14 @@ class QuoteCollectionView(APIView):
     """REST alias for creation: ``POST /api/v1/quotes/``."""
 
     def post(self, request):
-        return _create_quote(request.data, actor=_actor(request))
+        return _create_quote(request.data, request.user)
 
 
 class QuoteAcceptView(APIView):
     """REST alias: ``POST /api/v1/quotes/<id>/accept/``."""
 
     def post(self, request, pk):
-        return _accept_quote(pk, actor=_actor(request))
+        return _accept_quote(pk, request.user)
 
 
 class QuotePayView(APIView):
@@ -120,11 +127,11 @@ class QuotePayView(APIView):
 
     def post(self, request, pk):
         method = request.data.get("payment_method") if isinstance(request.data, dict) else None
-        return _pay_quote(pk, method, actor=_actor(request))
+        return _pay_quote(pk, method, request.user)
 
 
 class PolicyListView(generics.ListAPIView):
-    """Diagram step 5: ``GET /api/v1/policies/?customer_id=...``, paginated."""
+    """Diagram step 5: ``GET /api/v1/policies/?customer_id=...``, paginated + scoped."""
 
     serializer_class = PolicyReadSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -133,7 +140,7 @@ class PolicyListView(generics.ListAPIView):
     ordering = ["-created_at", "-id"]
 
     def get_queryset(self):
-        return _policy_queryset()
+        return scope_policies(_policy_queryset(), self.request.user)
 
 
 class PolicyDetailView(generics.RetrieveAPIView):
@@ -142,7 +149,7 @@ class PolicyDetailView(generics.RetrieveAPIView):
     serializer_class = PolicyDetailSerializer
 
     def get_queryset(self):
-        return _policy_queryset()
+        return scope_policies(_policy_queryset(), self.request.user)
 
     def handle_exception(self, exc):
         from django.http import Http404
@@ -156,7 +163,7 @@ class PolicyHistoryView(APIView):
     """Diagram step 7: ``GET /api/v1/policies/<id>/history/`` — the full narrative."""
 
     def get(self, request, pk):
-        policy = _get_policy(pk)
+        policy = _get_policy(pk, request.user)
         transitions = policy.transitions.select_related("actor").all()
         return Response(
             {

@@ -12,6 +12,7 @@ from apps.common.views import healthz
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("healthz/", healthz, name="healthz"),
+    path("api/v1/", include("apps.accounts.urls")),
     path("api/v1/", include("apps.customers.urls")),
     path("api/v1/", include("apps.policies.urls")),
     path("api/v1/", include("apps.search.urls")),

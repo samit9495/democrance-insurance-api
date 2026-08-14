@@ -12,6 +12,16 @@ import pytest
 from rest_framework.test import APIClient
 
 
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    """Reset the cache between tests so rate-throttle counters never leak across."""
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+    cache.clear()
+
+
 @pytest.fixture
 def anon_client() -> APIClient:
     """An unauthenticated API client."""

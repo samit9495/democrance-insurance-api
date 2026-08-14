@@ -12,6 +12,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import scope_customers, scope_policies
 from apps.customers.models import Customer
 from apps.customers.serializers import CustomerSerializer
 from apps.policies.models import Policy
@@ -28,23 +29,27 @@ class SearchView(APIView):
             raise ValidationError({"entity": f"Must be one of: {', '.join(_ENTITIES)}."})
 
         q = request.query_params.get("q", "").strip()
+        user = request.user
         payload: dict = {}
         if entity in ("all", "customers"):
-            payload["customers"] = self._section(self._customers(q), CustomerSerializer)
+            payload["customers"] = self._section(self._customers(q, user), CustomerSerializer)
         if entity in ("all", "policies"):
-            payload["policies"] = self._section(self._policies(q), PolicyReadSerializer)
+            payload["policies"] = self._section(self._policies(q, user), PolicyReadSerializer)
         return Response(payload)
 
     @staticmethod
-    def _customers(q: str):
-        qs = Customer.objects.all()
+    def _customers(q: str, user):
+        qs = scope_customers(Customer.objects.all(), user)
         if q:
             qs = qs.filter(Q(first_name__icontains=q) | Q(last_name__icontains=q))
         return qs
 
     @staticmethod
-    def _policies(q: str):
-        qs = Policy.objects.select_related("product", "customer").prefetch_related("payments")
+    def _policies(q: str, user):
+        qs = scope_policies(
+            Policy.objects.select_related("product", "customer").prefetch_related("payments"),
+            user,
+        )
         if q:
             qs = qs.filter(
                 Q(quote_reference__icontains=q)

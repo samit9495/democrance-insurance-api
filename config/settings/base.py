@@ -5,6 +5,7 @@ PostgreSQL and its absence falls back to zero-setup SQLite (docs/REQUIREMENTS.md
 D5). No secret is ever hardcoded for production.
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
@@ -35,6 +36,7 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "django_filters",
     "drf_spectacular",
 ]
@@ -133,9 +135,24 @@ STORAGES = {
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    # Deny by default (D4); the DEMO_OPEN_API escape hatch lives in the class.
+    "DEFAULT_PERMISSION_CLASSES": ["apps.accounts.permissions.DemoOrAuthenticated"],
     "EXCEPTION_HANDLER": "apps.common.exceptions.custom_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "apps.common.pagination.DefaultPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_THROTTLE_RATES": {"auth": "5/min"},
+}
+
+# --- JWT (D3, REQUIREMENTS 9.2) -------------------------------------------
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 SPECTACULAR_SETTINGS = {

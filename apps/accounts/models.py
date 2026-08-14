@@ -41,3 +41,12 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return self.email
+
+    @property
+    def is_agent_or_staff(self) -> bool:
+        """A privileged principal: sees every customer and policy (REQUIREMENTS 9.1)."""
+        return self.is_superuser or self.role in {self.Role.STAFF, self.Role.AGENT}
+
+    @property
+    def is_customer(self) -> bool:
+        return self.role == self.Role.CUSTOMER and not self.is_superuser
