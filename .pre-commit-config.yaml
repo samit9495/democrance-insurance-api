@@ -1,0 +1,11 @@
+# Ruff lint + format. Note: this repo pins core.hooksPath to .githooks for the
+# identity guarantee, so `pre-commit install` cannot wire itself into
+# .git/hooks. These hooks are enforced two ways that actually run: `pre-commit
+# run --all-files` in CI, and a ruff step appended to .githooks/pre-commit.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.3
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

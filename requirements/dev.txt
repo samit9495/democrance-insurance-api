@@ -1,0 +1,9 @@
+# Development and test dependencies. Includes everything in base.txt.
+-r base.txt
+pytest==9.1.1
+pytest-django==4.14.0
+pytest-cov==7.1.0
+factory-boy==3.3.3
+time-machine==3.4.0
+ruff==0.16.3
+pre-commit==4.6.2

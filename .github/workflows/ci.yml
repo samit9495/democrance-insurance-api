@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/dev.txt
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
+      - name: Check for missing migrations
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+        run: python manage.py makemigrations --check --dry-run
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, postgres]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: democrance
+          POSTGRES_PASSWORD: democrance
+          POSTGRES_DB: democrance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U democrance"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/dev.txt
+      - name: Run test suite
+        env:
+          DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgres://democrance:democrance@localhost:5432/democrance' || '' }}
+        run: pytest

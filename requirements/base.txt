@@ -1,0 +1,11 @@
+# Runtime dependencies. Versions pinned per docs/REQUIREMENTS.md 5.4.
+Django~=5.2.17
+djangorestframework==3.18.0
+djangorestframework-simplejwt==5.5.1
+drf-spectacular==0.30.0
+django-filter==26.1
+psycopg[binary]==3.3.4
+dj-database-url==3.1.2
+python-decouple==3.8
+whitenoise==6.12.0
+gunicorn==26.0.0
