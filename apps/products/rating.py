@@ -40,7 +40,7 @@ def calculate_premium(
             f"[{product.min_cover}, {product.max_cover}] for '{product.code}'."
         )
 
-    rule = _select_rule(product, age, as_of)
+    rule = select_rule(product, age, as_of)
     if rule is None:
         raise RatingError(f"No active rating band for age {age} on '{product.code}'.")
 
@@ -49,7 +49,7 @@ def calculate_premium(
     return max(rule.min_premium, premium)
 
 
-def _select_rule(product: ProductType, age: int, as_of: datetime.date) -> RatingRule | None:
+def select_rule(product: ProductType, age: int, as_of: datetime.date) -> RatingRule | None:
     candidates = [
         rule
         for rule in product.rating_rules.filter(is_active=True)
