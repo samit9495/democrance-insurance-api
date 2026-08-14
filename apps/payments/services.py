@@ -8,6 +8,8 @@ active without a payment and a payment never exists without binding its policy.
 
 from __future__ import annotations
 
+import logging
+
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -17,6 +19,8 @@ from apps.payments.models import Payment
 from apps.policies.models import Policy
 from apps.policies.services import activate_policy
 from apps.policies.state_machine import State
+
+logger = logging.getLogger("apps.payments")
 
 
 @transaction.atomic
@@ -62,6 +66,20 @@ def simulate_payment(
         idempotency_key=idempotency_key or None,
         provider_payload={"simulated": True, "method": method},
         settled_at=timezone.now() if succeeded else None,
+    )
+
+    logger.info(
+        "payment.recorded",
+        extra={
+            "extra_fields": {
+                "payment_reference": str(payment.reference),
+                "policy_id": policy.pk,
+                "method": method,
+                "status": payment.status,
+                "amount": str(amount),
+                "currency": currency,
+            }
+        },
     )
 
     activate_policy(

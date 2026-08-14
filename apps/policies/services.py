@@ -9,6 +9,7 @@ state and two concurrent binds cannot both win.
 from __future__ import annotations
 
 import datetime
+import logging
 from decimal import Decimal
 
 from django.conf import settings
@@ -20,6 +21,8 @@ from apps.policies.models import Policy, PolicyStateTransition
 from apps.policies.state_machine import State, assert_can_transition
 from apps.products.models import ProductType
 from apps.products.rating import calculate_premium, select_rule
+
+logger = logging.getLogger("apps.policies")
 
 
 def _apply_transition(
@@ -47,6 +50,18 @@ def _apply_transition(
         source=source,
         reason=reason,
         metadata=metadata or {},
+    )
+    logger.info(
+        "policy.transition",
+        extra={
+            "extra_fields": {
+                "policy_id": policy.pk,
+                "from_state": from_state,
+                "to_state": to_state,
+                "source": source,
+                "actor_id": getattr(actor, "pk", None),
+            }
+        },
     )
 
 

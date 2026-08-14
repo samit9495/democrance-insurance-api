@@ -55,4 +55,4 @@ down: ## Stop the Docker Compose stack
 demo: ## Seed then replay the seven diagram calls end to end — Phase 11
 	$(PY) manage.py migrate
 	$(PY) manage.py seed_demo
-	$(PYTEST) tests/e2e -v
+	$(PYTEST) tests/e2e -v --no-cov

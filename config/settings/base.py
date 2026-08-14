@@ -65,6 +65,7 @@ QUOTE_VALIDITY_DAYS = config("QUOTE_VALIDITY_DAYS", default=30, cast=int)
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.common.middleware.RequestIDMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -154,6 +155,33 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
+}
+
+# --- Logging (ENH-13) -----------------------------------------------------
+# Structured JSON to stdout with a request-id stamp on every line; the level is
+# env-driven so operators can dial up verbosity without a redeploy.
+LOG_LEVEL = config("LOG_LEVEL", default="INFO")
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {"request_id": {"()": "apps.common.logging.RequestIDFilter"}},
+    "formatters": {"json": {"()": "apps.common.logging.JSONFormatter"}},
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+            "filters": ["request_id"],
+        }
+    },
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "loggers": {
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "apps": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+    },
 }
 
 SPECTACULAR_SETTINGS = {
