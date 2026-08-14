@@ -7,13 +7,14 @@ diagram verbatim (APPEND_SLASH cannot rescue a slashless POST).
 
 from django.urls import path
 
-from apps.customers.views import CreateCustomerView
+from apps.customers.views import CreateCustomerView, CustomerListCreateView
 
 create_customer = CreateCustomerView.as_view()
+customers = CustomerListCreateView.as_view()
 
 urlpatterns = [
     path("create_customer/", create_customer, name="create-customer"),
     path("create_customer", create_customer),
-    path("customers/", create_customer, name="customers"),
-    path("customers", create_customer),
+    path("customers/", customers, name="customers"),
+    path("customers", customers),
 ]

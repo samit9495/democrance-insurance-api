@@ -5,6 +5,7 @@ Phase 7 wires the filters the diagram's list call needs (`customer_id`, `state`,
 """
 
 import django_filters
+from django.db.models import Q
 
 from apps.policies.models import Policy
 
@@ -14,7 +15,15 @@ class PolicyFilterSet(django_filters.FilterSet):
     type = django_filters.CharFilter(field_name="product__code")
     created_after = django_filters.IsoDateTimeFilter(field_name="created_at", lookup_expr="gte")
     created_before = django_filters.IsoDateTimeFilter(field_name="created_at", lookup_expr="lte")
+    q = django_filters.CharFilter(method="filter_q")
 
     class Meta:
         model = Policy
-        fields = ["customer_id", "state", "type", "created_after", "created_before"]
+        fields = ["customer_id", "state", "type", "created_after", "created_before", "q"]
+
+    def filter_q(self, queryset, name, value):
+        return queryset.filter(
+            Q(quote_reference__icontains=value)
+            | Q(customer__first_name__icontains=value)
+            | Q(customer__last_name__icontains=value)
+        )

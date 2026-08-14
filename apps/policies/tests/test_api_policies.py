@@ -126,6 +126,36 @@ def test_history_of_a_fresh_quote_shows_only_two_moves(staff_client, customer_fa
     assert moves == [(None, State.NEW), (State.NEW, State.QUOTED)]
 
 
+def test_policies_filter_by_type_and_state(staff_client, customer_factory, product):
+    customer = customer_factory(dob=datetime.date(1991, 6, 25))
+    quoted = _quote(customer, product)
+    active = _active_policy(customer, product)
+
+    quoted_only = staff_client.get("/api/v1/policies/?type=personal-accident&state=quoted").json()
+    active_only = staff_client.get("/api/v1/policies/?type=personal-accident&state=active").json()
+
+    assert [row["id"] for row in quoted_only["results"]] == [quoted.id]
+    assert [row["id"] for row in active_only["results"]] == [active.id]
+
+
+def test_policies_free_text_q_matches_customer_name(staff_client, customer_factory, product):
+    stokes = customer_factory(first_name="Ben", last_name="Stokes", dob=datetime.date(1991, 6, 25))
+    other = customer_factory(first_name="Joe", last_name="Root", dob=datetime.date(1990, 12, 30))
+    mine = _quote(stokes, product)
+    _quote(other, product)
+
+    body = staff_client.get("/api/v1/policies/?q=stok").json()
+
+    assert [row["id"] for row in body["results"]] == [mine.id]
+
+
+def test_policies_empty_result_is_not_404(staff_client):
+    response = staff_client.get("/api/v1/policies/?state=cancelled")
+
+    assert response.status_code == 200
+    assert response.json()["count"] == 0
+
+
 @pytest.mark.parametrize(
     "path_template",
     [
