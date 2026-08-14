@@ -49,6 +49,7 @@ LOCAL_APPS = [
     "apps.policies",
     "apps.payments",
     "apps.search",
+    "apps.web",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -160,4 +161,8 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Quote and policy lifecycle API for the Democrance technical test.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Docs must be reachable even when the API is locked down.
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    # Keep only the canonical slash-terminated routes in the schema.
+    "PREPROCESSING_HOOKS": ["apps.common.schema.drop_slashless_paths"],
 }

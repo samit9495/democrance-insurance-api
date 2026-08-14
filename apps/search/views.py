@@ -8,6 +8,8 @@ so a hostile ``q`` is parameterised and cannot inject SQL.
 from __future__ import annotations
 
 from django.db.models import Q
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -22,6 +24,13 @@ _LIMIT = 20
 _ENTITIES = ("all", "customers", "policies")
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter("q", OpenApiTypes.STR, description="Free-text query."),
+        OpenApiParameter("entity", OpenApiTypes.STR, enum=list(_ENTITIES)),
+    ],
+    responses=OpenApiTypes.OBJECT,
+)
 class SearchView(APIView):
     def get(self, request):
         entity = request.query_params.get("entity", "all")

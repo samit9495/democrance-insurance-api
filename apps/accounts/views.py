@@ -7,6 +7,8 @@ genuinely revokes the session.
 
 from __future__ import annotations
 
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -40,6 +42,7 @@ class VerifyView(TokenVerifyView):
     permission_classes = [AllowAny]
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -54,6 +57,7 @@ class LogoutView(APIView):
         return Response({"detail": "Logged out."}, status=status.HTTP_200_OK)
 
 
+@extend_schema(responses=MeSerializer)
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 

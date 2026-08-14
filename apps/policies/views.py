@@ -8,6 +8,8 @@ the aliases share the same three handlers so their behaviour cannot drift.
 from __future__ import annotations
 
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import filters, generics, status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
@@ -76,6 +78,7 @@ def _pay_quote(quote_id: int, payment_method: str | None, user) -> Response:
     return _render(policy)
 
 
+@extend_schema(request=QuoteCreateSerializer, responses=PolicyReadSerializer)
 class QuoteDispatchView(APIView):
     """The diagram's single ``POST /api/v1/quote/`` doing create / accept / pay."""
 
@@ -108,6 +111,7 @@ class QuoteDispatchView(APIView):
         )
 
 
+@extend_schema(request=QuoteCreateSerializer, responses=PolicyReadSerializer)
 class QuoteCollectionView(APIView):
     """REST alias for creation: ``POST /api/v1/quotes/``."""
 
@@ -115,6 +119,7 @@ class QuoteCollectionView(APIView):
         return _create_quote(request.data, request.user)
 
 
+@extend_schema(request=None, responses=PolicyReadSerializer)
 class QuoteAcceptView(APIView):
     """REST alias: ``POST /api/v1/quotes/<id>/accept/``."""
 
@@ -122,6 +127,7 @@ class QuoteAcceptView(APIView):
         return _accept_quote(pk, request.user)
 
 
+@extend_schema(request=QuoteTransitionSerializer, responses=PolicyReadSerializer)
 class QuotePayView(APIView):
     """REST alias: ``POST /api/v1/quotes/<id>/pay/``."""
 
@@ -159,6 +165,7 @@ class PolicyDetailView(generics.RetrieveAPIView):
         return super().handle_exception(exc)
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class PolicyHistoryView(APIView):
     """Diagram step 7: ``GET /api/v1/policies/<id>/history/`` — the full narrative."""
 

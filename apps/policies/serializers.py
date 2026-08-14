@@ -7,6 +7,7 @@ read serializer renders exactly the shape the sequence diagram draws.
 
 from __future__ import annotations
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 
@@ -53,6 +54,7 @@ class PolicyReadSerializer(serializers.ModelSerializer):
             "payment",
         ]
 
+    @extend_schema_field(PaymentSummarySerializer(allow_null=True))
     def get_payment(self, obj: Policy):
         # Read from the prefetch cache (obj.payments.all()) so list views stay
         # free of N+1; pick the newest in Python rather than re-querying.

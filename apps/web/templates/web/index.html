@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Democrance Insurance API — Demo</title>
+  <style>
+    :root { --bg:#0b1020; --card:#151b30; --ink:#e8ecf7; --muted:#93a0c0;
+            --accent:#5b8cff; --ok:#37d67a; --err:#ff6b6b; --line:#26304f; }
+    * { box-sizing: border-box; }
+    body { margin:0; font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;
+           background:var(--bg); color:var(--ink); }
+    header { padding:24px 28px; border-bottom:1px solid var(--line); }
+    header h1 { margin:0; font-size:20px; }
+    header p { margin:4px 0 0; color:var(--muted); }
+    main { display:grid; grid-template-columns:1.1fr 1fr; gap:20px; padding:24px 28px; }
+    @media (max-width: 900px){ main{ grid-template-columns:1fr; } }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+            padding:18px 18px 20px; }
+    .card h2 { margin:0 0 12px; font-size:14px; letter-spacing:.04em;
+               text-transform:uppercase; color:var(--muted); }
+    .step { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+    .step .n { width:22px; height:22px; border-radius:50%; background:var(--accent);
+               color:#fff; display:grid; place-items:center; font-size:12px; font-weight:700; }
+    label { display:block; color:var(--muted); font-size:12px; margin:8px 0 3px; }
+    input { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--line);
+            background:#0e1428; color:var(--ink); }
+    button { cursor:pointer; border:0; border-radius:8px; padding:8px 14px; font-weight:600;
+             background:var(--accent); color:#fff; }
+    button.secondary { background:#26304f; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:end; }
+    .row > div { flex:1 1 120px; }
+    pre { background:#0e1428; border:1px solid var(--line); border-radius:10px; padding:12px;
+          max-height:520px; overflow:auto; white-space:pre-wrap; word-break:break-word; }
+    .pill { font-size:11px; padding:2px 8px; border-radius:999px; background:#0e1428;
+            border:1px solid var(--line); color:var(--muted); }
+    .ok{ color:var(--ok);} .err{ color:var(--err);} .muted{ color:var(--muted);}
+    hr { border:0; border-top:1px solid var(--line); margin:16px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Democrance Insurance API</h1>
+    <p>A no-tooling client that walks the seven steps of the sequence diagram.
+       See <a href="/api/v1/docs/" style="color:var(--accent)">Swagger</a> ·
+       <a href="/api/v1/redoc/" style="color:var(--accent)">ReDoc</a>.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Flow</h2>
+
+      <div class="step"><span class="n">A</span>
+        <span class="muted">Optional login (needed only when DEMO_OPEN_API=false)</span></div>
+      <div class="row">
+        <div><label>Email</label><input id="email" value="staff@demo.local" /></div>
+        <div><label>Password</label><input id="password" type="password" value="demo-pass-123" /></div>
+        <div style="flex:0 0 auto"><label>&nbsp;</label>
+          <button class="secondary" onclick="login()">Login</button></div>
+      </div>
+      <p id="authState" class="pill">not authenticated</p>
+      <hr />
+
+      <div class="step"><span class="n">1</span> Create customer</div>
+      <div class="row">
+        <div><label>First name</label><input id="firstName" value="Ben" /></div>
+        <div><label>Last name</label><input id="lastName" value="Stokes" /></div>
+        <div><label>DOB</label><input id="dob" value="25-06-1991" /></div>
+      </div>
+      <p><button onclick="createCustomer()">POST /create_customer/</button></p>
+
+      <div class="step"><span class="n">2</span> Create quote</div>
+      <div class="row">
+        <div><label>customer_id</label><input id="customerId" /></div>
+        <div><label>type</label><input id="type" value="personal-accident" /></div>
+      </div>
+      <p><button onclick="createQuote()">POST /quote/</button></p>
+
+      <div class="step"><span class="n">3</span> Accept &nbsp;
+        <span class="n">4</span> Pay</div>
+      <div class="row">
+        <div><label>quote_id</label><input id="quoteId" /></div>
+        <div><label>payment_method</label><input id="method" value="simulated_card" /></div>
+      </div>
+      <p>
+        <button onclick="transition('accepted')">Accept</button>
+        <button onclick="transition('active')">Pay &amp; bind</button>
+      </p>
+
+      <div class="step"><span class="n">5</span> List &nbsp;
+        <span class="n">6</span> Detail &nbsp;
+        <span class="n">7</span> History</div>
+      <p>
+        <button class="secondary" onclick="listPolicies()">List by customer</button>
+        <button class="secondary" onclick="policyDetail()">Detail</button>
+        <button class="secondary" onclick="policyHistory()">History</button>
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Response <span id="status" class="pill">—</span></h2>
+      <pre id="out">Ready. Run the steps on the left; ids auto-fill as you go.</pre>
+    </section>
+  </main>
+
+  <script>
+    const API = "/api/v1";
+    let accessToken = null;
+    const $ = (id) => document.getElementById(id);
+
+    function headers() {
+      const h = { "Content-Type": "application/json" };
+      if (accessToken) h["Authorization"] = "Bearer " + accessToken;
+      return h;
+    }
+
+    async function call(method, path, body) {
+      const opts = { method, headers: headers() };
+      if (body !== undefined) opts.body = JSON.stringify(body);
+      const res = await fetch(API + path, opts);
+      let data;
+      try { data = await res.json(); } catch { data = null; }
+      $("status").textContent = res.status + " " + res.statusText;
+      $("status").className = "pill " + (res.ok ? "ok" : "err");
+      $("out").textContent = JSON.stringify(data, null, 2);
+      return { res, data };
+    }
+
+    async function login() {
+      const { res, data } = await call("POST", "/auth/token/",
+        { email: $("email").value, password: $("password").value });
+      if (res.ok) {
+        accessToken = data.access;
+        $("authState").textContent = "authenticated as " + $("email").value;
+        $("authState").className = "pill ok";
+      }
+    }
+
+    async function createCustomer() {
+      const { res, data } = await call("POST", "/create_customer/", {
+        first_name: $("firstName").value,
+        last_name: $("lastName").value,
+        dob: $("dob").value,
+      });
+      if (res.ok) $("customerId").value = data.id;
+    }
+
+    async function createQuote() {
+      const { res, data } = await call("POST", "/quote/", {
+        customer_id: Number($("customerId").value),
+        type: $("type").value,
+      });
+      if (res.ok) $("quoteId").value = data.id;
+    }
+
+    async function transition(status) {
+      const body = { quote_id: Number($("quoteId").value), status };
+      if (status === "active") body.payment_method = $("method").value;
+      await call("POST", "/quote/", body);
+    }
+
+    const listPolicies = () =>
+      call("GET", "/policies/?customer_id=" + encodeURIComponent($("customerId").value));
+    const policyDetail = () =>
+      call("GET", "/policies/" + encodeURIComponent($("quoteId").value) + "/");
+    const policyHistory = () =>
+      call("GET", "/policies/" + encodeURIComponent($("quoteId").value) + "/history/");
+  </script>
+</body>
+</html>
