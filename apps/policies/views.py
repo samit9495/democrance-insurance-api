@@ -7,7 +7,8 @@ the aliases share the same three handlers so their behaviour cannot drift.
 
 from __future__ import annotations
 
-from rest_framework import status
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, generics, status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,12 +16,19 @@ from rest_framework.views import APIView
 from apps.payments.models import Payment
 from apps.payments.services import simulate_payment
 from apps.policies import services
+from apps.policies.filters import PolicyFilterSet
 from apps.policies.models import Policy
 from apps.policies.serializers import (
+    PolicyDetailSerializer,
     PolicyReadSerializer,
     QuoteCreateSerializer,
     QuoteTransitionSerializer,
+    TransitionSerializer,
 )
+
+
+def _policy_queryset():
+    return Policy.objects.select_related("product", "customer").prefetch_related("payments")
 
 
 def _actor(request):
@@ -29,7 +37,7 @@ def _actor(request):
 
 def _get_policy(quote_id: int) -> Policy:
     try:
-        return Policy.objects.select_related("product", "customer").get(pk=quote_id)
+        return _policy_queryset().get(pk=quote_id)
     except Policy.DoesNotExist as exc:
         raise NotFound(f"No quote with id {quote_id}.") from exc
 
@@ -113,3 +121,47 @@ class QuotePayView(APIView):
     def post(self, request, pk):
         method = request.data.get("payment_method") if isinstance(request.data, dict) else None
         return _pay_quote(pk, method, actor=_actor(request))
+
+
+class PolicyListView(generics.ListAPIView):
+    """Diagram step 5: ``GET /api/v1/policies/?customer_id=...``, paginated."""
+
+    serializer_class = PolicyReadSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = PolicyFilterSet
+    ordering_fields = ["created_at", "premium", "state"]
+    ordering = ["-created_at", "-id"]
+
+    def get_queryset(self):
+        return _policy_queryset()
+
+
+class PolicyDetailView(generics.RetrieveAPIView):
+    """Diagram step 6: ``GET /api/v1/policies/<id>/`` with the nested customer."""
+
+    serializer_class = PolicyDetailSerializer
+
+    def get_queryset(self):
+        return _policy_queryset()
+
+    def handle_exception(self, exc):
+        from django.http import Http404
+
+        if isinstance(exc, Http404):
+            exc = NotFound(f"No policy with id {self.kwargs.get('pk')}.")
+        return super().handle_exception(exc)
+
+
+class PolicyHistoryView(APIView):
+    """Diagram step 7: ``GET /api/v1/policies/<id>/history/`` — the full narrative."""
+
+    def get(self, request, pk):
+        policy = _get_policy(pk)
+        transitions = policy.transitions.select_related("actor").all()
+        return Response(
+            {
+                "policy_id": policy.id,
+                "current_state": policy.state,
+                "transitions": TransitionSerializer(transitions, many=True).data,
+            }
+        )

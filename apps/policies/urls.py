@@ -9,6 +9,9 @@ slashless POST — it would discard the body).
 from django.urls import path
 
 from apps.policies.views import (
+    PolicyDetailView,
+    PolicyHistoryView,
+    PolicyListView,
     QuoteAcceptView,
     QuoteCollectionView,
     QuoteDispatchView,
@@ -19,6 +22,9 @@ dispatch = QuoteDispatchView.as_view()
 collection = QuoteCollectionView.as_view()
 accept = QuoteAcceptView.as_view()
 pay = QuotePayView.as_view()
+policy_list = PolicyListView.as_view()
+policy_detail = PolicyDetailView.as_view()
+policy_history = PolicyHistoryView.as_view()
 
 urlpatterns = [
     path("quote/", dispatch, name="quote"),
@@ -29,4 +35,10 @@ urlpatterns = [
     path("quotes/<int:pk>/accept", accept),
     path("quotes/<int:pk>/pay/", pay, name="quote-pay"),
     path("quotes/<int:pk>/pay", pay),
+    path("policies/", policy_list, name="policy-list"),
+    path("policies", policy_list),
+    path("policies/<int:pk>/history/", policy_history, name="policy-history"),
+    path("policies/<int:pk>/history", policy_history),
+    path("policies/<int:pk>/", policy_detail, name="policy-detail"),
+    path("policies/<int:pk>", policy_detail),
 ]

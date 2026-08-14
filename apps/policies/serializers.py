@@ -12,8 +12,9 @@ from rest_framework.exceptions import NotFound
 
 from apps.common.serializers import StrictFieldsMixin
 from apps.customers.models import Customer
+from apps.customers.serializers import CustomerSerializer
 from apps.payments.models import Payment
-from apps.policies.models import Policy
+from apps.policies.models import Policy, PolicyStateTransition
 from apps.products.models import ProductType
 
 
@@ -53,8 +54,34 @@ class PolicyReadSerializer(serializers.ModelSerializer):
         ]
 
     def get_payment(self, obj: Policy):
-        payment = obj.payments.order_by("-created_at", "-id").first()
-        return None if payment is None else PaymentSummarySerializer(payment).data
+        # Read from the prefetch cache (obj.payments.all()) so list views stay
+        # free of N+1; pick the newest in Python rather than re-querying.
+        payments = list(obj.payments.all())
+        if not payments:
+            return None
+        latest = max(payments, key=lambda p: (p.created_at, p.id))
+        return PaymentSummarySerializer(latest).data
+
+
+class PolicyDetailSerializer(PolicyReadSerializer):
+    """Detail view (diagram step 6): the read shape plus the nested customer."""
+
+    customer = CustomerSerializer(read_only=True)
+
+    class Meta(PolicyReadSerializer.Meta):
+        fields = [*PolicyReadSerializer.Meta.fields, "customer", "rated_at"]
+
+
+class TransitionSerializer(serializers.ModelSerializer):
+    actor = serializers.SerializerMethodField()
+    at = serializers.DateTimeField(source="created_at", read_only=True)
+
+    class Meta:
+        model = PolicyStateTransition
+        fields = ["from_state", "to_state", "source", "actor", "reason", "at"]
+
+    def get_actor(self, obj: PolicyStateTransition):
+        return obj.actor.email if obj.actor_id else None
 
 
 class QuoteCreateSerializer(StrictFieldsMixin, serializers.Serializer):
