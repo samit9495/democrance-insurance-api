@@ -33,5 +33,13 @@ def test_healthz_reports_error_when_database_is_unreachable(client, monkeypatch)
 
 
 def test_settings_fall_back_to_sqlite_without_database_url(settings):
-    """With no DATABASE_URL the default database is SQLite — zero-setup (D5)."""
-    assert settings.DATABASES["default"]["ENGINE"].endswith("sqlite3")
+    """DATABASE_URL selects PostgreSQL; its absence falls back to SQLite (D5).
+
+    CI runs this on both legs of the matrix, so assert the contract in the
+    direction that matches the current environment rather than hard-coding one.
+    """
+    engine = settings.DATABASES["default"]["ENGINE"]
+    if settings.DATABASE_URL:
+        assert engine.endswith("postgresql")
+    else:
+        assert engine.endswith("sqlite3")
