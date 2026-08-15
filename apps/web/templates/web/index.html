@@ -6,100 +6,220 @@
   <title>Democrance Insurance API — Demo</title>
   <style>
     :root { --bg:#0b1020; --card:#151b30; --ink:#e8ecf7; --muted:#93a0c0;
-            --accent:#5b8cff; --ok:#37d67a; --err:#ff6b6b; --line:#26304f; }
+            --accent:#5b8cff; --ok:#37d67a; --err:#ff6b6b; --line:#26304f;
+            --post:#5b8cff; --get:#37d67a; }
     * { box-sizing: border-box; }
     body { margin:0; font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;
            background:var(--bg); color:var(--ink); }
     header { padding:24px 28px; border-bottom:1px solid var(--line); }
     header h1 { margin:0; font-size:20px; }
     header p { margin:4px 0 0; color:var(--muted); }
-    main { display:grid; grid-template-columns:1.1fr 1fr; gap:20px; padding:24px 28px; }
+    main { display:grid; grid-template-columns:1.1fr 1fr; gap:20px; padding:24px 28px; align-items:start; }
     @media (max-width: 900px){ main{ grid-template-columns:1fr; } }
     .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
             padding:18px 18px 20px; }
-    .card h2 { margin:0 0 12px; font-size:14px; letter-spacing:.04em;
+    .card > h2 { margin:0 0 14px; font-size:14px; letter-spacing:.04em;
                text-transform:uppercase; color:var(--muted); }
-    .step { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
-    .step .n { width:22px; height:22px; border-radius:50%; background:var(--accent);
-               color:#fff; display:grid; place-items:center; font-size:12px; font-weight:700; }
+    .rightcard { position:sticky; top:24px; }
+
+    /* Each API interaction is its own bordered, self-describing section. */
+    .section { border:1px solid var(--line); border-radius:10px; padding:14px 14px 16px;
+               margin-bottom:14px; background:#0e142866; }
+    .shead { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .shead strong { font-size:15px; }
+    .n { width:22px; height:22px; border-radius:50%; background:var(--accent); flex:0 0 auto;
+         color:#fff; display:grid; place-items:center; font-size:12px; font-weight:700; }
+    .method { font-size:11px; font-weight:700; letter-spacing:.03em; padding:2px 8px;
+              border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .method.post { background:rgba(91,140,255,.16); color:var(--post); border:1px solid rgba(91,140,255,.4); }
+    .method.get  { background:rgba(55,214,122,.14); color:var(--get);  border:1px solid rgba(55,214,122,.4); }
+    .desc { color:var(--muted); font-size:12.5px; margin:8px 0 12px; }
+    .desc b { color:var(--ink); font-weight:600; }
+
     label { display:block; color:var(--muted); font-size:12px; margin:8px 0 3px; }
-    input { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--line);
-            background:#0e1428; color:var(--ink); }
+    input, select { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--line);
+            background:#0e1428; color:var(--ink); font:inherit; }
+    .hint { display:block; color:var(--muted); font-size:11px; margin:3px 0 0; }
     button { cursor:pointer; border:0; border-radius:8px; padding:8px 14px; font-weight:600;
              background:var(--accent); color:#fff; }
     button.secondary { background:#26304f; }
     button:disabled { opacity:.5; cursor:not-allowed; }
-    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:end; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:start; }
     .row > div { flex:1 1 120px; }
+    .actions { margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .preview { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;
+               color:var(--muted); margin-top:10px; word-break:break-all; }
+    .preview code { color:var(--get); }
     pre { background:#0e1428; border:1px solid var(--line); border-radius:10px; padding:12px;
-          max-height:520px; overflow:auto; white-space:pre-wrap; word-break:break-word; }
+          max-height:560px; overflow:auto; white-space:pre-wrap; word-break:break-word; margin:0; }
     .pill { font-size:11px; padding:2px 8px; border-radius:999px; background:#0e1428;
             border:1px solid var(--line); color:var(--muted); }
+    #reqline { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;
+               color:var(--muted); margin:0 0 10px; word-break:break-all; }
     .ok{ color:var(--ok);} .err{ color:var(--err);} .muted{ color:var(--muted);}
-    hr { border:0; border-top:1px solid var(--line); margin:16px 0; }
   </style>
 </head>
 <body>
   <header>
     <h1>Democrance Insurance API</h1>
-    <p>A no-tooling client that walks the seven steps of the sequence diagram.
+    <p>A no-tooling client that walks the seven steps of the sequence diagram, one call per section.
        See <a href="/api/v1/docs/" style="color:var(--accent)">Swagger</a> ·
        <a href="/api/v1/redoc/" style="color:var(--accent)">ReDoc</a>.</p>
   </header>
 
   <main>
     <section class="card">
-      <h2>Flow</h2>
+      <h2>Flow — run top to bottom</h2>
 
-      <div class="step"><span class="n">A</span>
-        <span class="muted">Optional login (needed only when DEMO_OPEN_API=false)</span></div>
-      <div class="row">
-        <div><label>Email</label><input id="email" value="staff@demo.local" /></div>
-        <div><label>Password</label><input id="password" type="password" value="demo-pass-123" /></div>
-        <div style="flex:0 0 auto"><label>&nbsp;</label>
-          <button class="secondary" onclick="login()">Login</button></div>
+      <!-- A. Login -->
+      <div class="section">
+        <div class="shead"><span class="n">A</span><strong>Login</strong>
+          <span class="method post">POST /auth/token/</span></div>
+        <p class="desc">Optional. Only needed when <b>DEMO_OPEN_API=false</b>; in demo mode every step
+          below works without it. Seeded logins share the password <b>demo-pass-123</b>.</p>
+        <div class="row">
+          <div><label>Email</label><input id="email" value="staff@demo.local" />
+            <span class="hint">staff@demo.local · agent@demo.local · customer@demo.local</span></div>
+          <div><label>Password</label><input id="password" type="password" value="demo-pass-123" /></div>
+          <div style="flex:0 0 auto"><label>&nbsp;</label>
+            <button class="secondary" onclick="login()">Login</button></div>
+        </div>
+        <p id="authState" class="pill" style="margin-top:10px">not authenticated</p>
       </div>
-      <p id="authState" class="pill">not authenticated</p>
-      <hr />
 
-      <div class="step"><span class="n">1</span> Create customer</div>
-      <div class="row">
-        <div><label>First name</label><input id="firstName" value="Ben" /></div>
-        <div><label>Last name</label><input id="lastName" value="Stokes" /></div>
-        <div><label>DOB</label><input id="dob" value="25-06-1991" /></div>
+      <!-- 1. Create customer -->
+      <div class="section">
+        <div class="shead"><span class="n">1</span><strong>Create customer</strong>
+          <span class="method post">POST /create_customer/</span></div>
+        <p class="desc">Creates a customer record. The returned <b>id</b> auto-fills step 2 (quote)
+          and step 5 (list).</p>
+        <div class="row">
+          <div><label>first_name</label><input id="firstName" value="Ben" /></div>
+          <div><label>last_name</label><input id="lastName" value="Stokes" /></div>
+          <div><label>dob</label><input id="dob" value="25-06-1991" />
+            <span class="hint">Format DD-MM-YYYY (also accepts ISO YYYY-MM-DD)</span></div>
+        </div>
+        <div class="actions"><button onclick="createCustomer()">Create customer</button></div>
       </div>
-      <p><button onclick="createCustomer()">POST /create_customer/</button></p>
 
-      <div class="step"><span class="n">2</span> Create quote</div>
-      <div class="row">
-        <div><label>customer_id</label><input id="customerId" /></div>
-        <div><label>type</label><input id="type" value="personal-accident" /></div>
+      <!-- 2. Create quote -->
+      <div class="section">
+        <div class="shead"><span class="n">2</span><strong>Create quote</strong>
+          <span class="method post">POST /quote/</span></div>
+        <p class="desc">Prices a quote for a <b>customer id</b> + product <b>type</b>. Premium is computed
+          server-side. The returned <b>id</b> auto-fills steps 3, 4, 6 and 7.</p>
+        <div class="row">
+          <div><label>customer_id</label><input id="customerId" />
+            <span class="hint">Numeric id from step 1</span></div>
+          <div><label>type</label>
+            <select id="type">
+              <option value="personal-accident">personal-accident</option>
+              <option value="travel">travel</option>
+            </select>
+            <span class="hint">Seeded products; more can be added in the admin</span></div>
+          <div><label>cover (optional)</label><input id="cover" placeholder="default 200000" />
+            <span class="hint">personal-accident 1000–1000000 (def 200000); travel 1000–500000 (def 50000)</span></div>
+        </div>
+        <div class="actions"><button onclick="createQuote()">Create quote</button></div>
       </div>
-      <p><button onclick="createQuote()">POST /quote/</button></p>
 
-      <div class="step"><span class="n">3</span> Accept &nbsp;
-        <span class="n">4</span> Pay</div>
-      <div class="row">
-        <div><label>quote_id</label><input id="quoteId" /></div>
-        <div><label>payment_method</label><input id="method" value="simulated_card" /></div>
+      <!-- 3. Accept quote -->
+      <div class="section">
+        <div class="shead"><span class="n">3</span><strong>Accept quote</strong>
+          <span class="method post">POST /quote/</span></div>
+        <p class="desc">Sends <b>{quote_id, status: "accepted"}</b>. Moves the policy
+          <b>quoted → accepted</b>. Runs on the quote id below.</p>
+        <div class="row">
+          <div><label>quote_id</label><input id="acceptId" />
+            <span class="hint">Numeric id from step 2</span></div>
+        </div>
+        <div class="actions"><button onclick="accept()">Accept</button></div>
       </div>
-      <p>
-        <button onclick="transition('accepted')">Accept</button>
-        <button onclick="transition('active')">Pay &amp; bind</button>
-      </p>
 
-      <div class="step"><span class="n">5</span> List &nbsp;
-        <span class="n">6</span> Detail &nbsp;
-        <span class="n">7</span> History</div>
-      <p>
-        <button class="secondary" onclick="listPolicies()">List by customer</button>
-        <button class="secondary" onclick="policyDetail()">Detail</button>
-        <button class="secondary" onclick="policyHistory()">History</button>
-      </p>
+      <!-- 4. Pay & bind -->
+      <div class="section">
+        <div class="shead"><span class="n">4</span><strong>Pay &amp; bind</strong>
+          <span class="method post">POST /quote/</span></div>
+        <p class="desc">Sends <b>{quote_id, status: "active", payment_method}</b>. Moves the policy
+          <b>accepted → active</b> and attaches a payment. Runs on the quote id below.</p>
+        <div class="row">
+          <div><label>quote_id</label><input id="payId" />
+            <span class="hint">Numeric id from step 2</span></div>
+          <div><label>payment_method</label>
+            <select id="method">
+              <option value="simulated_card">simulated_card</option>
+              <option value="invoice">invoice</option>
+            </select>
+            <span class="hint">simulated_card succeeds instantly; invoice stays pending</span></div>
+        </div>
+        <div class="actions"><button onclick="pay()">Pay &amp; bind</button></div>
+      </div>
+
+      <!-- 5. List policies -->
+      <div class="section">
+        <div class="shead"><span class="n">5</span><strong>List policies</strong>
+          <span class="method get">GET /policies/</span></div>
+        <p class="desc">Lists every policy for a <b>customer id</b>. Optional filters narrow the set;
+          leave them blank for all. This runs on the <b>customer</b> from step 1 — not a single policy.</p>
+        <div class="row">
+          <div><label>customer_id</label><input id="listCustomerId" oninput="updateListUrl()" />
+            <span class="hint">Numeric id from step 1</span></div>
+          <div><label>state (optional)</label>
+            <select id="listState" onchange="updateListUrl()">
+              <option value="">(any)</option>
+              <option value="new">new</option>
+              <option value="quoted">quoted</option>
+              <option value="accepted">accepted</option>
+              <option value="active">active</option>
+              <option value="expired">expired</option>
+              <option value="cancelled">cancelled</option>
+              <option value="declined">declined</option>
+            </select></div>
+          <div><label>type (optional)</label>
+            <select id="listType" onchange="updateListUrl()">
+              <option value="">(any)</option>
+              <option value="personal-accident">personal-accident</option>
+              <option value="travel">travel</option>
+            </select></div>
+          <div><label>q (optional)</label><input id="listQ" oninput="updateListUrl()" placeholder="name or reference" />
+            <span class="hint">Free-text: quote reference or customer name</span></div>
+        </div>
+        <div class="preview">GET <code id="listUrl">/policies/</code></div>
+        <div class="actions"><button class="secondary" onclick="listPolicies()">List policies</button></div>
+      </div>
+
+      <!-- 6. Policy detail -->
+      <div class="section">
+        <div class="shead"><span class="n">6</span><strong>Policy detail</strong>
+          <span class="method get">GET /policies/&lt;id&gt;/</span></div>
+        <p class="desc">Fetches <b>one</b> policy/quote by its id — customer, rating inputs and payment.
+          Runs on the <b>policy id</b> below (auto-filled from step 2).</p>
+        <div class="row">
+          <div><label>policy_id</label><input id="detailId" oninput="updateDetailUrl()" />
+            <span class="hint">A quote and its policy share the same id</span></div>
+        </div>
+        <div class="preview">GET <code id="detailUrl">/policies/</code></div>
+        <div class="actions"><button class="secondary" onclick="policyDetail()">Get detail</button></div>
+      </div>
+
+      <!-- 7. Policy history -->
+      <div class="section">
+        <div class="shead"><span class="n">7</span><strong>Policy history</strong>
+          <span class="method get">GET /policies/&lt;id&gt;/history/</span></div>
+        <p class="desc">Shows the ordered <b>state transitions</b> for one policy/quote id — the full
+          new → quoted → accepted → active narrative. Runs on the <b>policy id</b> below.</p>
+        <div class="row">
+          <div><label>policy_id</label><input id="historyId" oninput="updateHistoryUrl()" />
+            <span class="hint">A quote and its policy share the same id</span></div>
+        </div>
+        <div class="preview">GET <code id="historyUrl">/policies/</code></div>
+        <div class="actions"><button class="secondary" onclick="policyHistory()">Get history</button></div>
+      </div>
     </section>
 
-    <section class="card">
+    <section class="card rightcard">
       <h2>Response <span id="status" class="pill">—</span></h2>
+      <p id="reqline" class="muted">No request sent yet.</p>
       <pre id="out">Ready. Run the steps on the left; ids auto-fill as you go.</pre>
     </section>
   </main>
@@ -108,6 +228,7 @@
     const API = "/api/v1";
     let accessToken = null;
     const $ = (id) => document.getElementById(id);
+    const val = (id) => $(id).value.trim();
 
     function headers() {
       const h = { "Content-Type": "application/json" };
@@ -118,54 +239,85 @@
     async function call(method, path, body) {
       const opts = { method, headers: headers() };
       if (body !== undefined) opts.body = JSON.stringify(body);
+      // Echo exactly what is being sent, so the request is never a mystery.
+      $("reqline").textContent = method + " " + API + path +
+        (body !== undefined ? "  " + JSON.stringify(body) : "");
+      $("reqline").className = "";
       const res = await fetch(API + path, opts);
       let data;
       try { data = await res.json(); } catch { data = null; }
       $("status").textContent = res.status + " " + res.statusText;
       $("status").className = "pill " + (res.ok ? "ok" : "err");
-      $("out").textContent = JSON.stringify(data, null, 2);
+      $("out").textContent = data === null ? "(no body)" : JSON.stringify(data, null, 2);
       return { res, data };
     }
 
+    // --- live GET previews ---------------------------------------------------
+    function listQuery() {
+      const params = new URLSearchParams();
+      if (val("listCustomerId")) params.set("customer_id", val("listCustomerId"));
+      if (val("listState")) params.set("state", val("listState"));
+      if (val("listType")) params.set("type", val("listType"));
+      if (val("listQ")) params.set("q", val("listQ"));
+      const qs = params.toString();
+      return "/policies/" + (qs ? "?" + qs : "");
+    }
+    const updateListUrl = () => { $("listUrl").textContent = listQuery(); };
+    const updateDetailUrl = () =>
+      { $("detailUrl").textContent = "/policies/" + (val("detailId") || "<id>") + "/"; };
+    const updateHistoryUrl = () =>
+      { $("historyUrl").textContent = "/policies/" + (val("historyId") || "<id>") + "/history/"; };
+
+    function refreshPreviews() { updateListUrl(); updateDetailUrl(); updateHistoryUrl(); }
+
+    // --- actions -------------------------------------------------------------
     async function login() {
       const { res, data } = await call("POST", "/auth/token/",
-        { email: $("email").value, password: $("password").value });
+        { email: val("email"), password: val("password") });
       if (res.ok) {
         accessToken = data.access;
-        $("authState").textContent = "authenticated as " + $("email").value;
+        $("authState").textContent = "authenticated as " + val("email");
         $("authState").className = "pill ok";
       }
     }
 
     async function createCustomer() {
       const { res, data } = await call("POST", "/create_customer/", {
-        first_name: $("firstName").value,
-        last_name: $("lastName").value,
-        dob: $("dob").value,
+        first_name: val("firstName"),
+        last_name: val("lastName"),
+        dob: val("dob"),
       });
-      if (res.ok) $("customerId").value = data.id;
+      if (res.ok) {
+        $("customerId").value = data.id;      // step 2
+        $("listCustomerId").value = data.id;  // step 5
+        refreshPreviews();
+      }
     }
 
     async function createQuote() {
-      const { res, data } = await call("POST", "/quote/", {
-        customer_id: Number($("customerId").value),
-        type: $("type").value,
-      });
-      if (res.ok) $("quoteId").value = data.id;
+      const body = { customer_id: Number(val("customerId")), type: val("type") };
+      if (val("cover")) body.cover = val("cover");
+      const { res, data } = await call("POST", "/quote/", body);
+      if (res.ok) {
+        // A quote id is the policy id: fan it out to every step that needs it.
+        ["acceptId", "payId", "detailId", "historyId"].forEach((id) => { $(id).value = data.id; });
+        refreshPreviews();
+      }
     }
 
-    async function transition(status) {
-      const body = { quote_id: Number($("quoteId").value), status };
-      if (status === "active") body.payment_method = $("method").value;
-      await call("POST", "/quote/", body);
-    }
+    const accept = () =>
+      call("POST", "/quote/", { quote_id: Number(val("acceptId")), status: "accepted" });
 
-    const listPolicies = () =>
-      call("GET", "/policies/?customer_id=" + encodeURIComponent($("customerId").value));
-    const policyDetail = () =>
-      call("GET", "/policies/" + encodeURIComponent($("quoteId").value) + "/");
+    const pay = () =>
+      call("POST", "/quote/",
+        { quote_id: Number(val("payId")), status: "active", payment_method: val("method") });
+
+    const listPolicies = () => call("GET", listQuery());
+    const policyDetail = () => call("GET", "/policies/" + encodeURIComponent(val("detailId")) + "/");
     const policyHistory = () =>
-      call("GET", "/policies/" + encodeURIComponent($("quoteId").value) + "/history/");
+      call("GET", "/policies/" + encodeURIComponent(val("historyId")) + "/history/");
+
+    refreshPreviews();
   </script>
 </body>
 </html>
