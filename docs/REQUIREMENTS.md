@@ -636,6 +636,10 @@ The admin is an explicit acceptance criterion, so it is treated as a deliverable
 - **`RatingRuleAdmin`** / **`ProductTypeAdmin`** — editable with overlap validation surfaced as form
   errors.
 - **`PaymentAdmin`** — read-only, searchable by reference.
+- **`UserAdmin`** — `BaseUserAdmin` re-pointed from `username` to the model's `email` login; `list_display`:
+  email, role, staff/active flags, joined; `list_filter`: role, staff, superuser, active; `search_fields`:
+  email, names. Password management is preserved — the add form hashes `password1`/`password2`, the change
+  form shows the password as a read-only hash, and the dedicated set-password view stays available.
 - Branded `site_header` / `site_title` so a reviewer lands somewhere obviously purpose-built.
 
 ---

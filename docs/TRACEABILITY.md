@@ -49,7 +49,7 @@ PostgreSQL.
 | ID | Requirement | Proving test(s) |
 |----|-------------|-----------------|
 | REQ-P4-1 | Written auth discussion doc | [`docs/AUTHENTICATION.md`](AUTHENTICATION.md) |
-| REQ-P4-2 | JWT issue/refresh/verify/logout, roles, scoping | `apps/accounts/tests/test_auth.py::test_token_obtain_returns_access_and_refresh`, `::test_refresh_rotates_and_blacklists_the_old_token`, `::test_logout_blacklists_the_refresh_token`, `::test_me_returns_role_and_linked_customer_id`, `tests/test_permissions.py::*` |
+| REQ-P4-2 | JWT issue/refresh/verify/logout, roles, scoping | `apps/accounts/tests/test_auth.py::test_token_obtain_returns_access_and_refresh`, `::test_refresh_rotates_and_blacklists_the_old_token`, `::test_logout_blacklists_the_refresh_token`, `::test_me_returns_role_and_linked_customer_id`, `tests/test_permissions.py::*`, `apps/accounts/tests/test_admin.py::*` |
 
 ## Decisions (D-series)
 
