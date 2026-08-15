@@ -27,11 +27,6 @@ Then open:
 - `/api/v1/docs/` — Swagger UI · `/api/v1/redoc/` — ReDoc
 - `/admin/` — Django admin (create a superuser with `make superuser`)
 
-> The repo lives in iCloud Drive locally, which is a poor home for a virtualenv.
-> Keep the env outside it and point the Makefile at it:
-> `make install VENV=$HOME/.venvs/democrance-insurance-api` (then pass the same
-> `VENV=…` to other targets).
-
 Demo logins after `make seed` (password `demo-pass-123`): `staff@demo.local`,
 `agent@demo.local`, `customer@demo.local`.
 
