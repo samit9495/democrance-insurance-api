@@ -10,25 +10,101 @@ audit trail, JWT auth, OpenAPI docs and a no-tooling demo client.
 - **Decisions:** [docs/adr/](docs/adr/) (ADRs 0001–0008)
 - **Requirement → test map:** [docs/TRACEABILITY.md](docs/TRACEABILITY.md)
 
-## Quickstart (local, zero services)
+## Running the API — two ways
 
-No database to install — it falls back to SQLite when `DATABASE_URL` is unset.
+Pick whichever suits you. Both serve at `http://127.0.0.1:8000/` and behave the
+same at the API level.
+
+- **Option A — Local:** fastest, zero services (SQLite fallback). Best for
+  reading code, running tests, and a quick edit-reload loop.
+- **Option B — Docker:** production-like, runs against PostgreSQL with one
+  command. Best for a realistic, reproducible environment.
+
+### Option A — Local (no Docker)
+
+Prerequisites: Python 3.12 and `make`.
 
 ```bash
 make install                      # create .venv, install deps
-make migrate
+make migrate                      # SQLite (no DATABASE_URL needed)
 make seed                         # demo users + a linked customer
 make run                          # http://127.0.0.1:8000/
 ```
 
-Then open:
+`.env` is optional — dev settings plus the SQLite fallback work out of the box.
+Copy [.env.example](.env.example) to `.env` only if you want to override
+defaults (e.g. point `DATABASE_URL` at a local Postgres).
 
-- `/` — the single-file demo client that walks all seven diagram steps
-- `/api/v1/docs/` — Swagger UI · `/api/v1/redoc/` — ReDoc
-- `/admin/` — Django admin (create a superuser with `make superuser`)
+Authentication in this mode: `DEMO_OPEN_API` defaults to `true` (dev settings),
+so the seven diagram endpoints work with a bare `curl`. Run `make seed` to get
+the demo logins, and `make superuser` to create a Django admin account. See
+[Authentication (both modes)](#authentication-both-modes) below.
 
-Demo logins after `make seed` (password `demo-pass-123`): `staff@demo.local`,
-`agent@demo.local`, `customer@demo.local`.
+### Option B — Docker Compose (Postgres)
+
+Prerequisites: Docker Desktop running.
+
+```bash
+make up      # build + start API and Postgres; migrates and seeds on first boot
+make demo    # migrate, seed, and replay the seven-step flow end to end
+make down    # stop the stack
+```
+
+This runs the production settings against PostgreSQL. The image is multi-stage
+and runs as a non-root user (gunicorn + WhiteNoise); the container has a
+`/healthz/` healthcheck and the API waits for a healthy database before serving.
+Verified from a cold `docker compose up --build`.
+
+Authentication in this mode: the compose file sets `DEMO_OPEN_API=true` and
+`SEED_DEMO=1`, so the demo logins are created automatically on first boot and
+the diagram endpoints are open. Create an admin account with
+`docker compose exec api python manage.py createsuperuser`. To lock the API
+down, set `DEMO_OPEN_API=false` (see below).
+
+### Local vs Docker at a glance
+
+| | Local (Option A) | Docker (Option B) |
+|---|---|---|
+| Settings | `config.settings.dev` | `config.settings.prod` |
+| Database | SQLite fallback (or `DATABASE_URL`) | PostgreSQL (compose service) |
+| `DEMO_OPEN_API` from | `.env` / defaults (`true`) | compose `environment:` (`true`) |
+| Seeding | manual: `make seed` | automatic on first boot (`SEED_DEMO=1`) |
+| Admin user | `make superuser` | `docker compose exec api python manage.py createsuperuser` |
+| Code changes | `make run` auto-reloads | re-run `make up` to rebuild (see note) |
+
+> Developing against Docker: code is baked into the image and gunicorn runs
+> without `--reload`, so changes to templates, Python, or `.env` need `make up`
+> to rebuild and recreate the container — a plain `docker compose restart` will
+> not pick them up. For a fast edit loop, prefer Option A.
+
+## Authentication (both modes)
+
+Full design in [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md); the essentials:
+
+- **Demo is open by default.** With `DEMO_OPEN_API=true` (the default in both
+  modes) the seven diagram endpoints are reachable without a token, so a bare
+  `curl` satisfies the acceptance criteria. It is logged loudly at startup and
+  **must be `false` in any real deployment** — the locked-down path is proven by
+  `tests/test_permissions.py`.
+- **Real auth is JWT** (`djangorestframework-simplejwt`). Obtain a token, then
+  send it as a Bearer header:
+
+```bash
+# obtain {access, refresh}
+ACCESS=$(curl -sX POST http://127.0.0.1:8000/api/v1/auth/token/ \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"staff@demo.local","password":"demo-pass-123"}' \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access"])')
+
+# call a protected endpoint with the token
+curl -s http://127.0.0.1:8000/api/v1/auth/me/ -H "Authorization: Bearer $ACCESS"
+```
+
+- **Demo logins** (password `demo-pass-123`): `staff@demo.local`,
+  `agent@demo.local`, `customer@demo.local`. They exist after seeding — manual
+  (`make seed`) in Local, automatic on first boot in Docker.
+- **Roles.** Staff and agents see every customer and policy; a customer sees
+  only its own records (a foreign record returns `404`, not `403`).
 
 ## The seven-step flow (the brief)
 
@@ -70,6 +146,10 @@ The same flow is asserted end to end by
 > If you also ran `make seed`, the demo customer takes id 1 and Ben becomes id 2 —
 > adjust `customer_id`/`quote_id` accordingly.
 
+You can also walk all seven steps in the browser at `/` (the single-file demo
+client), or explore them interactively at `/api/v1/docs/` (Swagger) and
+`/api/v1/redoc/` (ReDoc). The Django admin is at `/admin/`.
+
 ## Testing & quality
 
 ```bash
@@ -78,9 +158,11 @@ make lint        # ruff
 make format      # ruff format + --fix
 ```
 
-The rating engine, the policy state machine and the payment service are held at
-**100%** coverage — the parts where a bug costs money. Tests live beside the
-code they cover; only cross-app end-to-end tests live in `tests/`.
+`make test` needs no Docker — it runs on in-memory SQLite by default; CI
+additionally runs the whole suite against PostgreSQL. The rating engine, the
+policy state machine and the payment service are held at **100%** coverage — the
+parts where a bug costs money. Tests live beside the code they cover; only
+cross-app end-to-end tests live in `tests/`.
 
 ## Architecture at a glance
 
@@ -112,18 +194,6 @@ apps/
 config/       split settings (base/dev/test/prod), urls
 docs/         requirements, API, auth, ADRs, sequence diagram
 ```
-
-## Docker
-
-```bash
-make up      # build + start API and Postgres; migrates and seeds on first boot
-make demo    # migrate, seed, and replay the seven-step flow end to end
-make down    # stop the stack
-```
-
-The image is multi-stage and runs as a non-root user (gunicorn + WhiteNoise);
-the container has a `/healthz/` healthcheck and the API waits for a healthy
-database before serving. Verified from a cold `docker compose up --build`.
 
 ## Deviations from the brief, and scope
 
