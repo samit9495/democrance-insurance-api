@@ -19,7 +19,7 @@ PA = "personal-accident"
 
 @time_machine.travel(TODAY)
 @pytest.mark.django_db
-def test_seven_step_diagram_flow(anon_client):
+def test_full_diagram_flow(anon_client):
     # Step 1 - create the customer (brief's literal example payload).
     created = anon_client.post(
         "/api/v1/create_customer/",

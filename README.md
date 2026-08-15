@@ -69,7 +69,7 @@ curl -s  http://127.0.0.1:8000/api/v1/policies/1/history/
 ```
 
 The same flow is asserted end to end by
-`tests/e2e/test_full_diagram_flow.py::test_seven_step_diagram_flow`.
+`tests/e2e/test_sequence_diagram_flow.py::test_full_diagram_flow`.
 
 > Ids above assume a fresh database (just `make migrate`), so Ben is customer 1.
 > If you also ran `make seed`, the demo customer takes id 1 and Ben becomes id 2 —

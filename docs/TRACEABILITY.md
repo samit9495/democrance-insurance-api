@@ -19,7 +19,7 @@ PostgreSQL.
 | REQ-P1-2 | `POST /api/v1/create_customer/` accepts JSON | `apps/customers/tests/test_api.py::test_create_customer_with_brief_payload_returns_201_and_persists` |
 | REQ-P1-3 | `Customer` model with name/dob/id | `apps/customers/tests/test_models.py::test_str_includes_full_name`, `apps/customers/tests/test_serializers.py::test_required_fields_are_enforced` |
 | REQ-P1-4 | Brief payload creates a customer | `apps/customers/tests/test_api.py::test_create_customer_with_brief_payload_returns_201_and_persists` |
-| REQ-P1-5 | Reproducible executable e2e suite | `tests/e2e/test_full_diagram_flow.py::test_seven_step_diagram_flow`, `tests/e2e/test_acceptance_criteria.py::*` |
+| REQ-P1-5 | Reproducible executable e2e suite | `tests/e2e/test_sequence_diagram_flow.py::test_full_diagram_flow`, `tests/e2e/test_acceptance_criteria.py::*` |
 | REQ-P1-6 | Customer visible/correct in admin | `apps/customers/tests/test_admin.py::test_customer_is_listed_in_admin`, `::test_customer_change_page_renders`, `::test_customer_is_searchable_by_surname` |
 | REQ-P1-7 | Incremental, reviewable git history | `git log` reads test→feat per phase (see README §History); identity audit is samit9495-only |
 
@@ -83,7 +83,7 @@ PostgreSQL.
 | ENH-10 | Docker, Makefile, CI, SQLite fallback | `tests/test_migrations.py::test_no_missing_migrations`; verified `docker compose up` cold start |
 | ENH-11 | Single-file SPA walking the sequence | `apps/web/tests/test_web.py::test_demo_spa_is_served_at_the_root` |
 | ENH-12 | Query-count tests + coverage gate | `apps/policies/tests/test_api_policies.py::test_list_has_no_n_plus_one` |
-| ENH-13 | Structured logging + request IDs | `tests/e2e/test_full_diagram_flow.py::test_every_response_echoes_a_request_id`, `::test_request_id_is_minted_when_absent` |
+| ENH-13 | Structured logging + request IDs | `tests/e2e/test_sequence_diagram_flow.py::test_every_response_echoes_a_request_id`, `::test_request_id_is_minted_when_absent` |
 | ENH-13a | `/healthz/` + container healthcheck | `tests/test_smoke.py::test_healthz_returns_ok`, `::test_healthz_reports_error_when_database_is_unreachable` |
 
 ## Deliberately out of scope
